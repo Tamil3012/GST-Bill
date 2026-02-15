@@ -1,0 +1,7 @@
+{
+  "name": "GST Bill",
+  "description": "A comprehensive GST bill generation and management system featuring dashboard analytics, product/client CRUD, Excel data management, and professional invoice generation with watermark controls.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
