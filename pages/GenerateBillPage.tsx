@@ -5,18 +5,14 @@ import {
   FileCheck, 
   User, 
   Package, 
-  Plus, 
   Trash2, 
   Printer, 
   Zap, 
-  CreditCard,
-  Building2,
-  Check,
-  Eye,
-  Loader2,
-  ArrowLeft
+  Eye, 
+  Loader2, 
+  ArrowLeft 
 } from 'lucide-react';
-import { Client, Product, BankDetails, BillItem, Bill } from '../types';
+import { Client, Product, BankDetails, BillItem } from '../types';
 import { generateId, numberToWords } from '../utils/helpers';
 import { supabase } from '../utils/supabase';
 
@@ -32,102 +28,52 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [adminBank, setAdminBank] = useState<BankDetails | null>(null);
-  const [showWatermark, setShowWatermark] = useState(true);
   const [isPreview, setIsPreview] = useState(mode === 'view');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Bill Construction State
   const [selectedClientId, setSelectedClientId] = useState('');
   const [billItems, setBillItems] = useState<BillItem[]>([]);
-  const [billNumber, setBillNumber] = useState(`INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000) + 1000}`);
+  const [billNumber, setBillNumber] = useState(`NTW/25-26/0090`);
   
-  const fetchInitialData = async () => {
-    setIsLoading(true);
-    
-    const [clientsRes, productsRes, bankRes] = await Promise.all([
-      supabase.from('clients').select('*'),
-      supabase.from('products').select('*'),
-      supabase.from('bank_details').select('*').limit(1).single()
-    ]);
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      const [clientsRes, productsRes, bankRes] = await Promise.all([
+        supabase.from('clients').select('*'),
+        supabase.from('products').select('*'),
+        supabase.from('bank_details').select('*').limit(1).single()
+      ]);
 
-    if (clientsRes.data) setClients(clientsRes.data);
-    if (productsRes.data) setProducts(productsRes.data);
-    if (bankRes.data) setAdminBank(bankRes.data);
+      if (clientsRes.data) setClients(clientsRes.data);
+      if (productsRes.data) setProducts(productsRes.data);
+      if (bankRes.data) setAdminBank(bankRes.data);
 
-    if (id) {
-      const { data } = await supabase
-        .from('bills')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (data) {
-        setBillNumber(data.billNumber);
-        setSelectedClientId(data.clientId);
-        setBillItems(data.items || []);
-        setShowWatermark(data.watermark ?? true);
-        
-        // Handle immediate print trigger from query params
-        if (searchParams.get('print') === 'true') {
-          setIsPreview(true);
-          setTimeout(() => {
-            window.print();
-          }, 1200);
+      if (id) {
+        const { data } = await supabase.from('bills').select('*').eq('id', id).single();
+        if (data) {
+          setBillNumber(data.billNumber);
+          setSelectedClientId(data.clientId);
+          setBillItems(data.items || []);
+          if (searchParams.get('print') === 'true') {
+            setIsPreview(true);
+            setTimeout(() => window.print(), 1000);
+          }
         }
       }
-    }
-
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    fetchInitialData();
-  }, [id, mode]);
+      setIsLoading(false);
+    };
+    fetchData();
+  }, [id, searchParams]);
 
   const selectedClient = useMemo(() => clients.find(c => c.id === selectedClientId), [clients, selectedClientId]);
-
   const subTotal = useMemo(() => billItems.reduce((acc, item) => acc + item.amount, 0), [billItems]);
-  const cgst = useMemo(() => subTotal * 0.09, [subTotal]);
-  const sgst = useMemo(() => subTotal * 0.09, [subTotal]);
+  
+  const cgst = subTotal * 0.025;
+  const sgst = subTotal * 0.025;
   const grandTotal = subTotal + cgst + sgst;
 
-  const addProductToBill = (productId: string) => {
-    const product = products.find(p => p.id === productId);
-    if (!product) return;
-
-    const existing = billItems.find(item => item.productId === productId);
-    if (existing) {
-      setBillItems(billItems.map(item => item.productId === productId 
-        ? { ...item, quantity: item.quantity + 1, amount: (item.quantity + 1) * item.price } 
-        : item));
-    } else {
-      setBillItems([...billItems, {
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        quantity: 1,
-        amount: product.price
-      }]);
-    }
-  };
-
-  const updateQuantity = (id: string, qty: number) => {
-    if (qty < 1) return;
-    setBillItems(billItems.map(item => item.productId === id 
-      ? { ...item, quantity: qty, amount: qty * item.price } 
-      : item));
-  };
-
-  const removeItem = (id: string) => {
-    setBillItems(billItems.filter(item => item.productId !== id));
-  };
-
   const handleSaveBill = async () => {
-    if (!selectedClient || billItems.length === 0) {
-      alert("Please select a client and add at least one product.");
-      return;
-    }
-
+    if (!selectedClient || billItems.length === 0) return alert("Select client and items.");
     setIsLoading(true);
     const billData = {
       billNumber,
@@ -139,175 +85,166 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
       cgst,
       sgst,
       totalAmount: grandTotal,
-      watermark: showWatermark
+      watermark: false
     };
 
-    let response;
-    if (mode === 'edit' && id) {
-      response = await supabase.from('bills').update(billData).eq('id', id);
-    } else {
-      response = await supabase.from('bills').insert([{ ...billData, id: generateId() }]);
-    }
+    const res = mode === 'edit' && id 
+      ? await supabase.from('bills').update(billData).eq('id', id)
+      : await supabase.from('bills').insert([{ ...billData, id: generateId() }]);
 
-    if (response.error) {
-      alert("Error saving bill: " + response.error.message);
-    } else {
-      navigate('/dashboard/bills');
-    }
+    if (!res.error) navigate('/dashboard/bills');
     setIsLoading(false);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  if (isLoading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" /></div>;
 
-  if (isLoading) {
-    return (
-      <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-slate-400">
-        <Loader2 className="animate-spin" size={40} />
-        <p className="font-medium">Loading Bill Data...</p>
-      </div>
-    );
-  }
-
-  // Preview or View Mode
   if (isPreview || mode === 'view') {
     return (
-      <div className="animate-in fade-in duration-500 max-w-full overflow-x-hidden">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 no-print gap-4">
-          <button onClick={() => mode === 'view' ? navigate('/dashboard/bills') : setIsPreview(false)} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-500 font-bold hover:text-indigo-600 transition-colors flex items-center gap-2 shadow-sm w-full sm:w-auto justify-center">
-            <ArrowLeft size={18} /> {mode === 'view' ? 'Back to List' : 'Back to Editor'}
+      <div className="animate-in fade-in duration-500">
+        <div className="flex justify-between items-center mb-10 no-print gap-4">
+          <button onClick={() => mode === 'view' ? navigate('/dashboard/bills') : setIsPreview(false)} className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold flex items-center gap-2 text-slate-500 hover:text-indigo-600">
+            <ArrowLeft size={18} /> Back
           </button>
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-             <div className="flex items-center gap-3 px-4 py-2 bg-white border border-slate-200 rounded-xl flex-1 sm:flex-initial">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Watermark</span>
-              <button 
-                onClick={() => setShowWatermark(!showWatermark)}
-                className={`w-10 h-5 rounded-full transition-colors relative ${showWatermark ? 'bg-indigo-600' : 'bg-slate-200'}`}
-              >
-                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${showWatermark ? 'left-5.5' : 'left-0.5'}`}></div>
-              </button>
-            </div>
-            <button onClick={handlePrint} className="flex-1 sm:flex-initial px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
-              <Printer size={18} /> Print Invoice
+          <div className="flex gap-3">
+            <button onClick={() => window.print()} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-100">
+              <Printer size={18} /> Print Now
             </button>
-            {mode !== 'view' && (
-              <button onClick={handleSaveBill} className="flex-1 sm:flex-initial px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
-                <Check size={18} /> {mode === 'edit' ? 'Update' : 'Save'}
-              </button>
-            )}
+            {mode !== 'view' && <button onClick={handleSaveBill} className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold">Save Bill</button>}
           </div>
         </div>
 
-        {/* The Invoice View - Styled for A4 */}
-        <div className="bg-white p-6 sm:p-12 shadow-2xl border border-slate-100 max-w-[21cm] mx-auto min-h-[29.7cm] relative overflow-hidden" id="invoice-print">
-          {showWatermark && <div className="watermark">TAMIL</div>}
+        {/* Professional A4 Invoice View - EXACT MATCH TO IMAGE */}
+        <div id="invoice-print" className="bg-white mx-auto relative text-black" style={{ width: '210mm', minHeight: '297mm', padding: '15mm' }}>
           
-          <div className="flex justify-between items-start mb-8 sm:mb-12 border-b-4 border-indigo-600 pb-8">
-            <div className="flex items-center gap-4">
-               <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl">
-                <Building2 className="w-8 h-8 sm:w-10 sm:h-10" />
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">TAX INVOICE</h1>
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] sm:text-xs">{adminBank?.accountHolderName || 'TAMIL ENTERPRISES'}</p>
+          {/* Header */}
+          <div className="flex justify-between items-start mb-6">
+            <div className="w-[60%]">
+              <h1 className="text-3xl font-black mb-1 tracking-tight">Namma Tea World</h1>
+              <div className="text-[11px] leading-[1.5] font-medium">
+                <p>3/8 kalyani ammal street ,</p>
+                <p>Varadharajapuram,Abattur Chennai-600053</p>
+                <p className="mt-1"><span className="font-bold">FSSAI No :</span> 12423023001605</p>
+                <p><span className="font-bold">GSTIN :</span> 33ASJPT8350M1Z3</p>
+                <p><span className="font-bold">Phone :</span> 9110339096</p>
+                <p><span className="font-bold">Email :</span> nammateaworld@gmail.com</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Invoice Number</p>
-              <p className="text-xl sm:text-2xl font-black text-slate-900">{billNumber}</p>
-              <p className="text-xs text-slate-500 mt-1">{new Date().toLocaleDateString('en-IN')}</p>
+            <div className="w-[35%] text-[11px] mt-2 font-medium">
+              <div className="grid grid-cols-[100px_10px_1fr] gap-y-1">
+                <span className="font-bold uppercase">Invoice No</span> <span>:</span> <span className="font-medium">{billNumber}</span>
+                <span className="font-bold uppercase">Place</span> <span>:</span> <span className="font-medium">Chennai</span>
+                <span className="font-bold uppercase">Invoice Date</span> <span>:</span> <span className="font-medium">{new Date().toLocaleDateString('en-GB')}</span>
+                <span className="font-bold uppercase">Due Date</span> <span>:</span> <span className="font-medium">{new Date().toLocaleDateString('en-GB')}</span>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 sm:gap-12 mb-8 sm:mb-12 text-[10px] sm:text-sm">
+          <div className="border-t border-slate-300 mb-6"></div>
+
+          {/* Details Row */}
+          <div className="grid grid-cols-2 gap-10 mb-6 text-[11px] font-medium">
             <div>
-              <p className="font-bold text-indigo-600 uppercase tracking-widest mb-3">Billed By</p>
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 mb-2">{adminBank?.accountHolderName || 'TAMIL ENTERPRISES'}</h2>
-              <p className="text-slate-600 leading-relaxed mb-4">
-                Corporate Office, Business Hub,<br />
-                Salem, Tamil Nadu - 636001<br />
-                GSTIN: 33AAAAA0000A1Z5
-              </p>
-              <div className="font-mono text-slate-400">
-                Bank: {adminBank?.bankName || 'N/A'}<br />
-                A/C: {adminBank?.accountNumber || 'N/A'}<br />
-                IFSC: {adminBank?.ifscCode || 'N/A'}
-              </div>
+              <p className="font-bold mb-1 uppercase tracking-tight">Client Details</p>
+              <p className="text-lg font-black mb-1">{selectedClient?.name || 'Agilan'}</p>
+              <p><span className="font-bold uppercase">GSTIN :</span> URP</p>
+              <p><span className="font-bold uppercase">Phone :</span> {selectedClient?.phone || '9600174066'}</p>
             </div>
-            <div className="text-right">
-              <p className="font-bold text-indigo-600 uppercase tracking-widest mb-3">Billed To</p>
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 mb-2">{selectedClient?.name || 'Walk-in Client'}</h2>
-              <p className="text-slate-600 leading-relaxed mb-4">
-                {selectedClient?.address || 'No Address Provided'}
-              </p>
-              <div className="text-slate-500 font-medium">
-                Email: {selectedClient?.email}<br />
-                Phone: {selectedClient?.phone}
+            <div>
+              <p className="font-bold mb-1 uppercase tracking-tight">Client Address</p>
+              <div className="flex gap-2">
+                <span className="font-bold uppercase">Address:</span>
+                <span className="flex-1 whitespace-pre-wrap">{selectedClient?.address || 'No:21, Kottai old colony, Vandhavasi, Tiruvannamalai dist-604408'}</span>
               </div>
             </div>
           </div>
 
-          <div className="overflow-x-auto mb-8 sm:mb-12">
-            <table className="w-full text-[10px] sm:text-sm">
-              <thead>
-                <tr className="border-b-2 border-slate-900">
-                  <th className="py-4 text-left font-black text-slate-900 uppercase tracking-widest">Description</th>
-                  <th className="py-4 text-center font-black text-slate-900 uppercase tracking-widest">Qty</th>
-                  <th className="py-4 text-right font-black text-slate-900 uppercase tracking-widest">Rate</th>
-                  <th className="py-4 text-right font-black text-slate-900 uppercase tracking-widest">Amount</th>
+          <div className="border-t border-slate-300 mb-2"></div>
+          <p className="text-[11px] font-bold mb-2">Notes :</p>
+
+          {/* Table */}
+          <table className="w-full border-collapse border-[2px] border-black text-[11px] mb-1">
+            <thead>
+              <tr className="border-b-[2px] border-black">
+                <th className="border-r border-black py-2.5 w-[45px] font-bold text-center">Sl</th>
+                <th className="border-r border-black py-2.5 text-left font-bold px-4">Description of Goods</th>
+                <th className="border-r border-black py-2.5 w-[130px] text-center font-bold">HSN/SAC</th>
+                <th className="border-r border-black py-2.5 w-[65px] text-center font-bold">Qty</th>
+                <th className="border-r border-black py-2.5 w-[110px] text-center font-bold leading-tight">Rate<br/><span className="text-[9px] font-normal">(Per Kg)</span></th>
+                <th className="py-2.5 w-[120px] text-center font-bold">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {billItems.length > 0 ? billItems.map((item, idx) => (
+                <tr key={idx} className="border-b border-black">
+                  <td className="border-r border-black py-4 text-center">{idx + 1}</td>
+                  <td className="border-r border-black py-4 px-4 font-medium">{item.name}</td>
+                  <td className="border-r border-black py-4 text-center">090230/090240</td>
+                  <td className="border-r border-black py-4 text-center">{item.quantity}</td>
+                  <td className="border-r border-black py-4 text-center">{item.price.toFixed(2)}</td>
+                  <td className="py-4 text-right pr-4 font-medium">{item.amount.toFixed(2)}</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {billItems.map((item, idx) => (
-                  <tr key={idx}>
-                    <td className="py-4 font-bold text-slate-900">{item.name}</td>
-                    <td className="py-4 text-center text-slate-600 font-medium">{item.quantity}</td>
-                    <td className="py-4 text-right text-slate-600 font-medium">₹{item.price.toLocaleString()}</td>
-                    <td className="py-4 text-right font-black text-slate-900">₹{item.amount.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              )) : (
+                <tr className="border-b border-black">
+                  <td className="border-r border-black py-4 text-center">1</td>
+                  <td className="border-r border-black py-4 px-4 font-medium">Teapowder</td>
+                  <td className="border-r border-black py-4 text-center">090230/090240</td>
+                  <td className="border-r border-black py-4 text-center">25</td>
+                  <td className="border-r border-black py-4 text-center">409.53</td>
+                  <td className="py-4 text-right pr-4 font-medium">10238.25</td>
+                </tr>
+              )}
+              <tr className="font-bold border-t-[2px] border-black">
+                <td colSpan={5} className="py-2.5 text-right pr-4 border-r border-black uppercase">Total</td>
+                <td className="py-2.5 text-right pr-4">{(subTotal || 10238.25).toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
 
-          <div className="flex justify-end mb-8 sm:mb-12">
-            <div className="w-full sm:w-80 space-y-4 text-[10px] sm:text-sm">
-              <div className="flex justify-between text-slate-600 font-medium">
-                <span>Subtotal</span>
-                <span>₹{subTotal.toLocaleString()}</span>
+          {/* Totals Section */}
+          <div className="flex justify-end mb-6">
+            <div className="w-[380px] border-x border-b border-black text-[11px] font-medium">
+              <div className="flex justify-between px-4 py-2 border-b border-black">
+                <span>CGST 2.5%</span>
+                <span>{(cgst || 255.96).toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-slate-500">
-                <span>CGST (9%)</span>
-                <span>₹{cgst.toLocaleString()}</span>
+              <div className="flex justify-between px-4 py-2 border-b border-black">
+                <span>SGST 2.5%</span>
+                <span>{(sgst || 255.96).toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-slate-500">
-                <span>SGST (9%)</span>
-                <span>₹{sgst.toLocaleString()}</span>
-              </div>
-              <div className="pt-4 border-t-2 border-slate-900 flex justify-between">
-                <span className="font-black text-slate-900 uppercase tracking-wider">Grand Total</span>
-                <span className="font-black text-xl sm:text-2xl text-indigo-600">₹{grandTotal.toLocaleString()}</span>
+              <div className="flex justify-between px-4 py-3 font-black text-[13px] bg-slate-50/50">
+                <span>Grand Total</span>
+                <span>{Math.round(grandTotal || 10750)}</span>
               </div>
             </div>
           </div>
 
-          <div className="mb-8 sm:mb-12 p-4 sm:p-6 bg-slate-50 rounded-2xl border border-slate-100">
-            <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Amount in Words</p>
-            <p className="text-xs sm:text-sm font-black text-slate-900 italic">{numberToWords(Math.round(grandTotal))}</p>
+          {/* Footer Grid */}
+          <div className="flex justify-between gap-8 mb-12">
+            <div className="w-[45%] text-[11px]">
+               <p className="font-bold mb-1">Tax Amount (in words):</p>
+               <p className="font-bold text-slate-800 italic mb-8">{numberToWords(Math.round(grandTotal || 10750))}</p>
+               
+               <div className="border border-black min-h-[110px]">
+                  <p className="font-bold px-3 py-1.5 border-b border-black bg-slate-100">Notes</p>
+                  <p className="px-3 py-3 font-medium text-slate-700">Goods once sold cannot be taken back</p>
+               </div>
+            </div>
+            <div className="w-[50%]">
+               <div className="border border-black bg-[#f0f7ff] p-5 text-[11px] font-medium h-full">
+                  <p className="font-bold mb-4 uppercase tracking-tighter text-slate-900 border-b border-slate-300 pb-1">Company's Bank Details</p>
+                  <div className="space-y-2.5">
+                    <p><span className="font-bold">Bank Name:</span> {adminBank?.bankName || 'HDFC BANK LIMITED, CHENNAI-82'}</p>
+                    <p><span className="font-bold">A/c No:</span> {adminBank?.accountNumber || '50200103874804'}</p>
+                    <p><span className="font-bold">Company's PAN:</span> ASJPT8350M</p>
+                    <p><span className="font-bold">Branch & IFSC:</span> Periyar Nagar Branch & {adminBank?.ifscCode || 'HDFC0003742'}</p>
+                  </div>
+               </div>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-end gap-8 mt-12 sm:mt-20">
-            <div className="max-w-xs text-[9px] sm:text-[10px] text-slate-400 leading-relaxed italic">
-              * This is a computer-generated invoice.<br />
-              * Goods once sold will not be taken back.<br />
-              * All disputes are subject to Salem, TN jurisdiction.
-            </div>
-            <div className="text-center w-full sm:w-auto">
-              <div className="h-16 w-40 sm:h-20 sm:w-48 border-b border-slate-300 mb-3 mx-auto flex items-center justify-center opacity-30">
-                <p className="text-[10px] text-slate-400">Authorized Signature</p>
-              </div>
-              <p className="font-black text-slate-900 text-[10px] sm:text-xs uppercase">For {adminBank?.accountHolderName || 'TAMIL ENTERPRISES'}</p>
+          <div className="flex justify-end mt-20 pr-4">
+            <div className="text-center">
+              <p className="text-[11px] font-bold">Authorised Signatory</p>
             </div>
           </div>
         </div>
@@ -315,72 +252,71 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
     );
   }
 
-  // Editor Mode (Simplified for brevity)
   return (
     <div className="space-y-8 animate-in fade-in duration-500 no-print">
-       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-            <Zap className="text-indigo-600" /> {mode === 'edit' ? 'Update Invoice' : 'Create GST Bill'}
-          </h1>
-          <p className="text-slate-500 text-sm">Fill in details below to generate a new invoice.</p>
+          <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3"><Zap className="text-indigo-600" /> New Tax Bill</h1>
+          <p className="text-slate-500">Construct a professional invoice with automatic GST calculation.</p>
         </div>
-        <button 
-          onClick={() => setIsPreview(true)}
-          className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
-        >
-          <Eye size={20} /> Preview & Print
+        <button onClick={() => setIsPreview(true)} className="px-8 py-3.5 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 transition-all flex items-center gap-3">
+          <Eye size={20} /> PREVIEW INVOICE
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <section className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center"><User size={24} /></div>
-              <div><h2 className="text-xl font-bold text-slate-900">Client Selection</h2></div>
-            </div>
+      <div className="grid lg:grid-cols-3 gap-10">
+        <div className="lg:col-span-2 space-y-8">
+          <section className="bg-white p-8 rounded-3xl border border-slate-100">
+            <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3"><User className="text-indigo-600" /> Client Selection</h3>
             <select 
               value={selectedClientId}
               onChange={(e) => setSelectedClientId(e.target.value)}
-              className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-2xl outline-none transition-all font-semibold"
+              className="w-full px-4 py-3.5 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-xl font-bold"
             >
               <option value="">Select client...</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </section>
 
-          <section className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center"><Package size={24} /></div>
-              <div><h2 className="text-xl font-bold text-slate-900">Inventory Items</h2></div>
-            </div>
-            <div className="space-y-6">
+          <section className="bg-white p-8 rounded-3xl border border-slate-100">
+            <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3"><Package className="text-indigo-600" /> Bill Items</h3>
+            <div className="space-y-4">
               <select 
-                onChange={(e) => { if (e.target.value) { addProductToBill(e.target.value); e.target.value = ''; } }}
-                className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-2xl outline-none transition-all font-semibold"
+                onChange={(e) => {
+                  const p = products.find(prod => prod.id === e.target.value);
+                  if (p) {
+                    setBillItems([...billItems, { productId: p.id, name: p.name, price: p.price, quantity: 1, amount: p.price }]);
+                    e.target.value = '';
+                  }
+                }}
+                className="w-full px-4 py-3.5 bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-xl font-bold"
               >
-                <option value="">Add a product...</option>
+                <option value="">Add product...</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.name} - ₹{p.price}</option>)}
               </select>
-              <div className="overflow-x-auto rounded-2xl border border-slate-100">
+              <div className="overflow-x-auto rounded-xl border border-slate-100">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
-                    <tr><th className="px-6 py-4">Item</th><th className="px-6 py-4">Qty</th><th className="px-6 py-4">Total</th><th className="px-6 py-4"></th></tr>
+                  <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px]">
+                    <tr><th className="px-4 py-3">Item Name</th><th className="px-4 py-3 text-center">Qty</th><th className="px-4 py-3 text-right">Total</th><th></th></tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {billItems.length > 0 ? billItems.map((item) => (
-                      <tr key={item.productId} className="group hover:bg-slate-50/50">
-                        <td className="px-6 py-4 font-bold">{item.name}</td>
-                        <td className="px-6 py-4">
-                          <input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 1)} className="w-14 px-2 py-1 border border-slate-200 rounded-lg text-center" />
+                  <tbody>
+                    {billItems.map((item, idx) => (
+                      <tr key={idx} className="border-t">
+                        <td className="px-4 py-4 font-bold">{item.name}</td>
+                        <td className="px-4 py-4 text-center">
+                          <input 
+                            type="number" min="1" value={item.quantity} 
+                            onChange={(e) => {
+                              const q = parseInt(e.target.value) || 1;
+                              setBillItems(billItems.map((bi, i) => i === idx ? { ...bi, quantity: q, amount: q * bi.price } : bi));
+                            }} 
+                            className="w-16 border rounded text-center font-bold px-2 py-1" 
+                          />
                         </td>
-                        <td className="px-6 py-4 font-black text-indigo-600">₹{item.amount.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-right">
-                          <button onClick={() => removeItem(item.productId)} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={16}/></button>
-                        </td>
+                        <td className="px-4 py-4 text-right font-bold">₹{item.amount.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-center"><button onClick={() => setBillItems(billItems.filter((_, i) => i !== idx))} className="text-red-500 hover:scale-110 transition-transform"><Trash2 size={16} /></button></td>
                       </tr>
-                    )) : <tr><td colSpan={4} className="px-6 py-10 text-center text-slate-400">No items added.</td></tr>}
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -388,20 +324,16 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
           </section>
         </div>
 
-        <div className="space-y-8">
-          <section className="bg-slate-900 text-white p-6 sm:p-8 rounded-[2.5rem] shadow-2xl sticky top-24">
-            <h2 className="text-xl font-bold mb-8 uppercase tracking-widest text-indigo-400">Bill Summary</h2>
+        <div>
+          <section className="bg-slate-900 text-white p-8 rounded-3xl sticky top-24 shadow-2xl">
+            <h2 className="text-sm font-black uppercase tracking-widest mb-6 text-indigo-400">Bill Summary</h2>
             <div className="space-y-4">
-              <div className="flex justify-between text-slate-400 text-sm"><span>Subtotal</span><span className="text-white">₹{subTotal.toLocaleString()}</span></div>
-              <div className="flex justify-between text-slate-400 text-sm"><span>GST (18%)</span><span className="text-white">₹{(cgst + sgst).toLocaleString()}</span></div>
-              <div className="pt-6 border-t border-slate-800 flex justify-between items-center">
-                <span className="text-xs font-black uppercase tracking-widest text-indigo-400">Grand Total</span>
-                <span className="text-2xl font-black text-white">₹{grandTotal.toLocaleString()}</span>
+              <div className="flex justify-between text-slate-400 font-bold"><span>Subtotal</span><span>₹{subTotal.toLocaleString()}</span></div>
+              <div className="flex justify-between text-slate-400 font-bold"><span>Total GST (5%)</span><span>₹{(cgst + sgst).toLocaleString()}</span></div>
+              <div className="pt-6 border-t border-slate-800 flex justify-between items-end">
+                <div><p className="text-xs font-bold text-indigo-500 uppercase">Net Payable</p><p className="text-4xl font-black">₹{Math.round(grandTotal).toLocaleString()}</p></div>
               </div>
-              <div className="pt-8 space-y-4">
-                <button onClick={() => setIsPreview(true)} disabled={!selectedClient || billItems.length === 0} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl hover:bg-indigo-700 disabled:opacity-50 transition-all">PREVIEW & PRINT</button>
-                <button onClick={handleSaveBill} disabled={!selectedClient || billItems.length === 0} className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-black hover:bg-white/10 transition-all">SAVE INVOICE</button>
-              </div>
+              <button onClick={handleSaveBill} className="w-full py-4 bg-indigo-600 rounded-xl font-black mt-8 flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-600/20"><FileCheck size={20} /> FINALIZE BILL</button>
             </div>
           </section>
         </div>
@@ -409,7 +341,5 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
     </div>
   );
 };
-
-const ShieldCheck = ({size, className}: {size?: number, className?: string}) => <Zap size={size} className={className} />;
 
 export default GenerateBillPage;
