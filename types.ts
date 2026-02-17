@@ -9,18 +9,28 @@ export interface Product {
 export interface Client {
   id: string;
   name: string;
-  email: string;
+  email?: string;
   phone: string;
   address: string;
-  bankAccount: string;
+  bankAccount?: string;
+  gst?: string;
+  fssai?: string;
   dateAdded: string;
 }
 
 export interface BankDetails {
+  id?: string;
+  businessName: string;
+  address: string;
+  fssaiNo: string;
+  gstin: string;
+  phone: string;
+  email: string;
   bankName: string;
   accountNumber: string;
   ifscCode: string;
-  accountHolderName: string;
+  branchName: string;
+  panNo: string;
 }
 
 export interface BillItem {
@@ -34,20 +44,16 @@ export interface BillItem {
 export interface Bill {
   id: string;
   billNumber: string;
+  place: string;
   date: string;
+  dueDate: string;
   clientId: string;
   clientName: string;
   items: BillItem[];
   subTotal: number;
-  cgst: number;
-  sgst: number;
+  cgstRate: number;
+  sgstRate: number;
+  cgstAmount: number;
+  sgstAmount: number;
   totalAmount: number;
-  watermark: boolean;
-}
-
-export interface DashboardStats {
-  totalProducts: number;
-  totalClients: number;
-  totalBills: number;
-  totalRevenue: number;
 }

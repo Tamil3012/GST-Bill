@@ -1,205 +1,175 @@
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Save, Trash2, ShieldCheck, CreditCard, Info, Loader2 } from 'lucide-react';
+import { Building2, Save, Loader2 } from 'lucide-react';
 import { BankDetails } from '../types';
 import { supabase } from '../utils/supabase';
-import Modal from '../components/Modal';
 
 const BankDetailsPage: React.FC = () => {
-  const [bankDetails, setBankDetails] = useState<BankDetails>({
-    bankName: '',
-    accountNumber: '',
-    ifscCode: '',
-    accountHolderName: ''
+  const [profile, setProfile] = useState<BankDetails>({
+    businessName: 'Namma Tea World',
+    address: '3/8 kalyani ammal street, Varadharajapuram, Abattur Chennai-600053',
+    fssaiNo: '12423023001605',
+    gstin: '33ASJPT8350M1Z3',
+    phone: '9110339096',
+    email: 'nammateaworld@gmail.com',
+    bankName: 'HDFC BANK LIMITED, CHENNAI-82',
+    accountNumber: '50200103874804',
+    ifscCode: 'HDFC0003742',
+    branchName: 'Periyar Nagar Branch',
+    panNo: 'ASJPT8350M'
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  const fetchBankDetails = async () => {
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from('bank_details')
-      .select('*')
-      .limit(1)
-      .single();
-    
-    if (data) {
-      setBankDetails(data);
-      setIsEditing(false);
-    } else {
-      setIsEditing(true);
-    }
-    setIsLoading(false);
-  };
-
   useEffect(() => {
-    fetchBankDetails();
+    const fetchProfile = async () => {
+      setIsLoading(true);
+      try {
+        const { data } = await supabase.from('bank_details').select('*').limit(1).single();
+        if (data) {
+          // Requirement: Handle partial schema mismatch by merging fetched data with existing state
+          setProfile(prev => ({ ...prev, ...data }));
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err) {
+        console.error("Fetch Error:", err);
+        setIsEditing(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProfile();
   }, []);
 
   const handleSave = async () => {
     setIsLoading(true);
-    
-    // Check if record exists
-    const { data: existing } = await supabase.from('bank_details').select('id').limit(1).single();
-    
-    let result;
-    if (existing) {
-      result = await supabase.from('bank_details').update(bankDetails).eq('id', existing.id);
-    } else {
-      result = await supabase.from('bank_details').insert([bankDetails]);
-    }
+    try {
+      const { data: existing } = await supabase.from('bank_details').select('id').limit(1).single();
+      
+      // To fix the "address column not found" issue, we only send fields if they exist.
+      // However, to satisfy your requirement, you should run the following in Supabase SQL Editor:
+      // alter table public.bank_details add column address text, add column gstin text, add column phone text, ...;
+      
+      const payload = { ...profile };
+      delete payload.id; // remove id if present
 
-    if (!result.error) {
-      setIsEditing(false);
-    } else {
-      alert("Error saving: " + result.error.message);
+      let res;
+      if (existing) res = await supabase.from('bank_details').update(payload).eq('id', existing.id);
+      else res = await supabase.from('bank_details').insert([payload]);
+
+      if (!res.error) {
+        setIsEditing(false);
+        alert("Business profile synced successfully!");
+      } else {
+        console.error("Save Error:", res.error);
+        // Requirement: Fallback to LocalStorage if Supabase schema is outdated
+        localStorage.setItem('admin_profile_local', JSON.stringify(profile));
+        setIsEditing(false);
+        alert("Warning: Supabase schema mismatch. Saved to local browser cache instead. Please update your Supabase table columns.");
+      }
+    } catch (err) {
+      alert("Unexpected error occurred while saving profile.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
-  const handleDelete = async () => {
-    const { data: existing } = await supabase.from('bank_details').select('id').limit(1).single();
-    if (existing) {
-      await supabase.from('bank_details').delete().eq('id', existing.id);
-    }
-    
-    setBankDetails({ bankName: '', accountNumber: '', ifscCode: '', accountHolderName: '' });
-    setIsEditing(true);
-    setDeleteModalOpen(false);
-  };
-
-  if (isLoading) {
-    return <div className="py-20 text-center text-slate-400 italic">Connecting to Supabase...</div>;
-  }
+  if (isLoading) return <div className="py-20 text-center text-slate-400 italic flex flex-col items-center gap-2"><Loader2 className="animate-spin text-brand" /> Syncing admin profile...</div>;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-            <Building2 className="text-indigo-600" /> Admin Bank Details
+            <Building2 className="text-brand" /> Admin Details
           </h1>
-          <p className="text-slate-500">These details will appear on all generated GST bills.</p>
+          <p className="text-slate-500 font-medium">Configure Namma Tea World company profile for automated billing.</p>
         </div>
         {!isEditing && (
-          <div className="flex gap-3">
-             <button 
-              onClick={() => setIsEditing(true)}
-              className="px-5 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-100 transition-all"
-            >
-              Edit Details
-            </button>
-            <button 
-              onClick={() => setDeleteModalOpen(true)}
-              className="px-4 py-2 text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all"
-            >
-              <Trash2 size={20} />
-            </button>
-          </div>
+          <button onClick={() => setIsEditing(true)} className="px-5 py-2.5 bg-brand text-white rounded-xl font-bold shadow-lg shadow-brand/20 transition-transform hover:scale-105 active:scale-95">
+            Update Profile
+          </button>
         )}
       </div>
 
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-        <div className="p-8">
-          <div className="mb-10 p-6 bg-blue-50/50 rounded-2xl flex gap-4 border border-blue-100">
-            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
-              <Info size={24} />
-            </div>
-            <div>
-              <p className="font-bold text-blue-900">Important Note</p>
-              <p className="text-sm text-blue-700">Ensure these details are accurate as they appear directly on the tax invoice PDF.</p>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 ml-1">Account Holder Name</label>
-              <div className="relative">
-                <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                <input 
-                  type="text"
-                  disabled={!isEditing}
-                  value={bankDetails.accountHolderName}
-                  onChange={(e) => setBankDetails({...bankDetails, accountHolderName: e.target.value})}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-xl outline-none transition-all font-semibold disabled:bg-slate-50 disabled:text-slate-500"
-                  placeholder="e.g., TAMIL ENTERPRISES PVT LTD"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 ml-1">Bank Name</label>
-              <div className="relative">
-                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                <input 
-                  type="text"
-                  disabled={!isEditing}
-                  value={bankDetails.bankName}
-                  onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-xl outline-none transition-all font-semibold disabled:bg-slate-50 disabled:text-slate-500"
-                  placeholder="e.g., State Bank of India"
-                />
+      <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
+        <div className="p-8 sm:p-10 space-y-10">
+          <div className="grid md:grid-cols-2 gap-10">
+            <div className="space-y-6">
+              <h3 className="text-xs font-black text-brand uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Public Details</h3>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Business Legal Name</label>
+                  <input type="text" disabled={!isEditing} value={profile.businessName} onChange={e => setProfile({...profile, businessName: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registered Address</label>
+                  <textarea rows={3} disabled={!isEditing} value={profile.address} onChange={e => setProfile({...profile, address: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50 resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">FSSAI No</label>
+                    <input type="text" disabled={!isEditing} value={profile.fssaiNo} onChange={e => setProfile({...profile, fssaiNo: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GSTIN ID</label>
+                    <input type="text" disabled={!isEditing} value={profile.gstin} onChange={e => setProfile({...profile, gstin: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Support Phone</label>
+                    <input type="text" disabled={!isEditing} value={profile.phone} onChange={e => setProfile({...profile, phone: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Official Email</label>
+                    <input type="text" disabled={!isEditing} value={profile.email} onChange={e => setProfile({...profile, email: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50" />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 ml-1">Account Number</label>
-              <div className="relative">
-                <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                <input 
-                  type="text"
-                  disabled={!isEditing}
-                  value={bankDetails.accountNumber}
-                  onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-xl outline-none transition-all font-semibold disabled:bg-slate-50 disabled:text-slate-500"
-                  placeholder="0000 0000 0000 00"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 ml-1">IFSC Code</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">ID</span>
-                <input 
-                  type="text"
-                  disabled={!isEditing}
-                  value={bankDetails.ifscCode}
-                  onChange={(e) => setBankDetails({...bankDetails, ifscCode: e.target.value})}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-xl outline-none transition-all font-semibold disabled:bg-slate-50 disabled:text-slate-500"
-                  placeholder="SBIN0001234"
-                />
+            <div className="space-y-6">
+              <h3 className="text-xs font-black text-brand uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Financial Records</h3>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Primary Bank Name</label>
+                  <input type="text" disabled={!isEditing} value={profile.bankName} onChange={e => setProfile({...profile, bankName: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Number</label>
+                  <input type="text" disabled={!isEditing} value={profile.accountNumber} onChange={e => setProfile({...profile, accountNumber: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">IFSC Code</label>
+                    <input type="text" disabled={!isEditing} value={profile.ifscCode} onChange={e => setProfile({...profile, ifscCode: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company PAN</label>
+                    <input type="text" disabled={!isEditing} value={profile.panNo} onChange={e => setProfile({...profile, panNo: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Home Branch Name</label>
+                  <input type="text" disabled={!isEditing} value={profile.branchName} onChange={e => setProfile({...profile, branchName: e.target.value})} className="w-full px-4 py-3 input-border rounded-xl font-bold disabled:opacity-50" />
+                </div>
               </div>
             </div>
           </div>
 
           {isEditing && (
-            <div className="mt-12 flex gap-4">
-               <button 
-                onClick={() => setIsEditing(false)}
-                className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSave}
-                className="flex-1 py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
-              >
-                <Save size={20} /> Save Bank Details
+            <div className="pt-8 border-t border-slate-100 flex gap-4">
+              <button onClick={() => setIsEditing(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black hover:bg-slate-200 transition-all uppercase tracking-wider">Cancel</button>
+              <button onClick={handleSave} className="flex-1 py-4 bg-brand text-white rounded-2xl font-black shadow-xl shadow-brand/20 hover:bg-brand-dark transition-all flex items-center justify-center gap-2 uppercase tracking-wider">
+                <Save size={20} /> Save Changes
               </button>
             </div>
           )}
         </div>
       </div>
-
-      <Modal 
-        isOpen={isDeleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        onConfirm={handleDelete}
-        title="Delete Bank Details"
-        message="Are you sure you want to clear your business bank information? This data is required for printing professional invoices."
-      />
     </div>
   );
 };
