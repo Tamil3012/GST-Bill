@@ -150,22 +150,22 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
           {/* Header */}
           <div className="flex justify-between items-start mb-6">
             <div className="w-[60%]">
-              <h1 className="text-3xl font-black mb-1 tracking-tight text-brand uppercase">Namma Tea World</h1>
+              <h1 className="text-3xl font-black mb-1 tracking-tight text-brand uppercase">NAMMA TEA WORLD</h1>
               <div className="text-[11px] leading-[1.5] font-medium">
                 <p>3/8 kalyani ammal street ,</p>
                 <p>Varadharajapuram,Abattur Chennai-600053</p>
                 <p className="mt-1"><span className="font-bold uppercase">FSSAI No :</span> 12423023001605</p>
                 <p><span className="font-bold uppercase">GSTIN :</span> 33ASJPT8350M1Z3</p>
-                <p><span className="font-bold uppercase">Phone :</span> 9110339096</p>
-                <p><span className="font-bold uppercase">Email :</span> nammateaworld@gmail.com</p>
+                <p><span className="font-bold uppercase">PHONE :</span> 9110339096</p>
+                <p><span className="font-bold uppercase">EMAIL :</span> nammateaworld@gmail.com</p>
               </div>
             </div>
             <div className="w-[35%] text-[11px] mt-2 font-medium">
               <div className="grid grid-cols-[100px_10px_1fr] gap-y-1">
-                <span className="font-bold uppercase">Invoice No</span> <span>:</span> <span className="font-medium">{billHeader.invoiceNo || '-'}</span>
-                <span className="font-bold uppercase">Place</span> <span>:</span> <span className="font-medium">{billHeader.place}</span>
-                <span className="font-bold uppercase">Invoice Date</span> <span>:</span> <span className="font-medium">{billHeader.date ? new Date(billHeader.date).toLocaleDateString('en-GB') : '-'}</span>
-                <span className="font-bold uppercase">Due Date</span> <span>:</span> <span className="font-medium">{billHeader.dueDate ? new Date(billHeader.dueDate).toLocaleDateString('en-GB') : '-'}</span>
+                <span className="font-bold uppercase">INVOICE NO</span> <span>:</span> <span className="font-medium">{billHeader.invoiceNo || '-'}</span>
+                <span className="font-bold uppercase">PLACE</span> <span>:</span> <span className="font-medium">{billHeader.place}</span>
+                <span className="font-bold uppercase">INVOICE DATE</span> <span>:</span> <span className="font-medium">{billHeader.date ? new Date(billHeader.date).toLocaleDateString('en-GB') : '-'}</span>
+                <span className="font-bold uppercase">DUE DATE</span> <span>:</span> <span className="font-medium">{billHeader.dueDate ? new Date(billHeader.dueDate).toLocaleDateString('en-GB') : '-'}</span>
               </div>
             </div>
           </div>
@@ -175,21 +175,21 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
           {/* Details Row */}
           <div className="grid grid-cols-2 gap-10 mb-6 text-[11px] font-medium">
             <div>
-              <p className="font-bold mb-1 uppercase tracking-tight opacity-60">Bill To</p>
+              <p className="font-bold mb-1 uppercase tracking-tight opacity-60">BILL TO</p>
               <p className="text-lg font-black mb-1">{selectedClient?.name || 'Customer'}</p>
               <p><span className="font-bold uppercase">GSTIN :</span> {selectedClient?.gst || 'URP'}</p>
-              <p><span className="font-bold uppercase">Phone :</span> {selectedClient?.phone || '-'}</p>
+              <p><span className="font-bold uppercase">PHONE :</span> {selectedClient?.phone || '-'}</p>
             </div>
             <div>
-              <p className="font-bold mb-1 uppercase tracking-tight opacity-60">Ship To</p>
+              <p className="font-bold mb-1 uppercase tracking-tight opacity-60">SHIP TO</p>
               <div className="flex gap-2">
-                <span className="font-bold uppercase">Address:</span>
+                <span className="font-bold uppercase">ADDRESS:</span>
                 <span className="flex-1 whitespace-pre-wrap">{selectedClient?.address || '-'}</span>
               </div>
             </div>
           </div>
 
-          {/* Table - Requirement: Fix cut-off by showing empty rows */}
+          {/* Table - Dynamic based on number of products */}
           <table className="w-full border-collapse border-[2px] border-black text-[11px] mb-1">
             <thead className="bg-gray-100 print-bg-gray">
               <tr className="border-b-[2px] border-black">
@@ -202,31 +202,29 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
               </tr>
             </thead>
             <tbody>
-              {billItems.map((item, idx) => (
-                <tr key={idx} className="border-b border-black">
-                  <td className="border-r border-black py-4 text-center">{idx + 1}</td>
-                  <td className="border-r border-black py-4 px-4 font-medium">{item.name}</td>
-                  <td className="border-r border-black py-4 text-center">090230</td>
-                  <td className="border-r border-black py-4 text-center">{item.quantity}</td>
-                  <td className="border-r border-black py-4 text-center">{item.price.toFixed(2)}</td>
-                  <td className="py-4 text-right pr-4 font-medium">{item.amount.toFixed(2)}</td>
+              {billItems.length > 0 ? (
+                billItems.map((item, idx) => (
+                  <tr key={idx} className="border-b border-black">
+                    <td className="border-r border-black py-4 text-center">{idx + 1}</td>
+                    <td className="border-r border-black py-4 px-4 font-medium">{item.name}</td>
+                    <td className="border-r border-black py-4 text-center">090230</td>
+                    <td className="border-r border-black py-4 text-center">{item.quantity}</td>
+                    <td className="border-r border-black py-4 text-center">{item.price.toFixed(2)}</td>
+                    <td className="py-4 text-right pr-4 font-medium">{item.amount.toFixed(2)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr className="border-b border-black">
+                   <td colSpan={6} className="py-10 text-center text-slate-400 italic">No products added yet</td>
                 </tr>
-              ))}
-              {/* Requirement: Always show 10 rows minimum to fix "cut-off" issue */}
-              {[...Array(Math.max(1, 10 - billItems.length))].map((_, i) => (
-                <tr key={`empty-${i}`} className="border-b border-black h-[32px]">
-                  <td className="border-r border-black"></td>
-                  <td className="border-r border-black"></td>
-                  <td className="border-r border-black"></td>
-                  <td className="border-r border-black"></td>
-                  <td className="border-r border-black"></td>
-                  <td></td>
+              )}
+              {/* Grand Total Row */}
+              {billItems.length > 0 && (
+                <tr className="font-bold border-t-[2px] border-black">
+                  <td colSpan={5} className="py-2.5 text-right pr-4 border-r border-black uppercase">Total Taxable Value</td>
+                  <td className="py-2.5 text-right pr-4">{subTotal.toFixed(2)}</td>
                 </tr>
-              ))}
-              <tr className="font-bold border-t-[2px] border-black">
-                <td colSpan={5} className="py-2.5 text-right pr-4 border-r border-black uppercase">Total Taxable Value</td>
-                <td className="py-2.5 text-right pr-4">{subTotal.toFixed(2)}</td>
-              </tr>
+              )}
             </tbody>
           </table>
 
@@ -276,7 +274,7 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
             <div className="text-center">
               <div className="h-20 border-b border-black w-48 mb-2"></div>
               <p className="text-[11px] font-bold uppercase">Authorised Signatory</p>
-              <p className="text-[9px] text-slate-400 mt-1 uppercase">Namma Tea World</p>
+              <p className="text-[9px] text-slate-400 mt-1 uppercase">NAMMA TEA WORLD</p>
             </div>
           </div>
         </div>
