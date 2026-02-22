@@ -16,6 +16,8 @@ export interface Client {
   gst?: string;
   fssai?: string;
   dateAdded: string;
+  gstin?: string;      
+  fssaino?: string;
 }
 
 export interface BankDetails {

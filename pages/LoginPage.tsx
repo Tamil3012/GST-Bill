@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
+import logo from '@/assets/images/logo.webp';
 
 interface LoginPageProps {
   onLogin: (success: boolean) => void;
@@ -22,7 +23,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
     // Simulate API delay
     setTimeout(() => {
-      if (username === 'Tamil' && password === 'tamil@0904') {
+      if (username === 'NammaTeaWorld' && password === '9030529076') {
         onLogin(true);
         navigate('/dashboard');
       } else {
@@ -33,17 +34,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-brand/20 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
           <div className="p-10">
-            <div className="flex flex-col items-center mb-10">
-              <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-100 mb-4">
-                <Lock size={32} />
-              </div>
-              <h2 className="text-3xl font-black text-slate-900">Welcome Back</h2>
-              <p className="text-slate-500 mt-2">Sign in to access your dashboard</p>
-            </div>
+            <img className='w-[200px] mx-auto mb-2' src={logo} alt="logo" />
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
@@ -63,7 +58,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-xl outline-none transition-all font-medium"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border  focus:border-indigo-600 focus:bg-white rounded-xl outline-none transition-all font-medium"
                     placeholder="Enter username"
                   />
                 </div>
@@ -80,7 +75,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-xl outline-none transition-all font-medium"
+                    className="w-full pl-12 pr-12 py-4 bg-slate-50 border-2 border focus:border-indigo-600 focus:bg-white rounded-xl outline-none transition-all font-medium"
                     placeholder="••••••••"
                   />
                   <button
@@ -93,18 +88,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm font-bold">
+              {/* <div className="flex items-center justify-between text-sm font-bold">
                 <label className="flex items-center gap-2 cursor-pointer text-slate-500">
                   <input type="checkbox" className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-600" />
                   Remember me
                 </label>
                 <a href="#" className="text-indigo-600 hover:text-indigo-700">Forgot password?</a>
-              </div>
+              </div> */}
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                className="w-full py-4 bg-brand text-white rounded-xl font-bold shadow-xl shadow-indigo-100 hover:bg-brand/70 transition-all flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -118,9 +113,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </form>
           </div>
           
-          <div className="p-6 bg-slate-50 text-center text-sm text-slate-500 font-medium">
-            Don't have an account? <a href="#" className="text-indigo-600 hover:underline">Request Access</a>
-          </div>
         </div>
       </div>
     </div>

@@ -113,7 +113,7 @@ const ProductsPage: React.FC = () => {
         </div>
         <button 
           onClick={() => setAddModalOpen(true)}
-          className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2"
+          className="px-5 py-2.5 bg-brand text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-brand/70 transition-all flex items-center gap-2"
         >
           <Plus size={20} /> Add New Product
         </button>
@@ -225,7 +225,7 @@ const ProductsPage: React.FC = () => {
               </div>
               <div className="pt-4 flex gap-4">
                 <button type="button" onClick={closeModals} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all">Cancel</button>
-                <button type="submit" className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">
+                <button type="submit" className="flex-1 py-3 bg-brand text-white rounded-xl font-bold shadow-xl shadow-indigo-100 hover:bg-brand/70 transition-all">
                   {currentProduct ? 'Save Changes' : 'Create Product'}
                 </button>
               </div>

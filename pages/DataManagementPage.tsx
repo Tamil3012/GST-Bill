@@ -113,7 +113,7 @@ const DataManagementPage: React.FC = () => {
               >
                 <Download size={18} /> Export List
               </button>
-              <label className="cursor-pointer py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 text-center">
+              <label className="cursor-pointer py-3 bg-brand text-white rounded-xl font-bold hover:bg-brand/70 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 text-center">
                 <Upload size={18} /> Import CSV
                 <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImport(e, 'products')} />
               </label>

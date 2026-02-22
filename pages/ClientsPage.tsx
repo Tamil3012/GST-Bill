@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
@@ -12,7 +11,8 @@ import {
   MapPin,
   CreditCard,
   Loader2,
-  Hash
+  Hash,
+  FileText
 } from 'lucide-react';
 import { Client } from '../types';
 import { generateId } from '../utils/helpers';
@@ -22,18 +22,22 @@ import Modal from '../components/Modal';
 const ClientsPage: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  console.log(clients,'clients')
   
-  // Requirement: Only name, email, phone, address, bankAccount
+  // Updated form data with gstin and fssaino
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     address: '',
-    bankAccount: ''
+    gstin: '',
+    fssaino: ''
   });
 
   const fetchClients = async () => {
@@ -51,40 +55,118 @@ const ClientsPage: React.FC = () => {
     fetchClients();
   }, []);
 
+  // ===== GENERATE NEXT CLIENT ID - Fixed Function =====
+  const generateNextClientId = async (): Promise<string> => {
+    try {
+      // Fetch all client IDs from database to find the maximum
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id')
+        .like('id', 'CL-%')
+        .order('id', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching client IDs:', error);
+        // Fallback: generate UUID-based ID if error
+        return `CL-${Date.now()}`;
+      }
+
+      if (!data || data.length === 0) {
+        // No clients exist, start with CL-001
+        return 'CL-001';
+      }
+
+      // Find the highest number from existing IDs
+      let maxNumber = 0;
+      
+      for (const client of data) {
+        if (client.id && client.id.startsWith('CL-')) {
+          const numPart = client.id.split('-')[1];
+          const num = parseInt(numPart, 10);
+          if (!isNaN(num) && num > maxNumber) {
+            maxNumber = num;
+          }
+        }
+      }
+
+      // Generate next ID
+      const nextNumber = maxNumber + 1;
+      const nextId = `CL-${nextNumber.toString().padStart(3, '0')}`;
+      
+      console.log('Generated next client ID:', nextId);
+      return nextId;
+      
+    } catch (err) {
+      console.error('Error generating client ID:', err);
+      // Fallback: generate timestamp-based ID
+      return `CL-${Date.now()}`;
+    }
+  };
+
   const handleAddOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
+
     const clientData = { 
       ...formData,
       dateAdded: new Date().toISOString()
     };
 
-    if (currentClient) {
-      const { error } = await supabase
-        .from('clients')
-        .update(clientData)
-        .eq('id', currentClient.id);
-      
-      if (!error) {
-        setClients(clients.map(c => c.id === currentClient.id ? { ...c, ...clientData } : c));
+    try {
+      if (currentClient) {
+        // UPDATE existing client
+        const { error } = await supabase
+          .from('clients')
+          .update(clientData)
+          .eq('id', currentClient.id);
+        
+        if (error) {
+          console.error('Update error:', error);
+          alert('Error updating client. Please try again.');
+        } else {
+          setClients(clients.map(c => c.id === currentClient.id ? { ...c, ...clientData } : c));
+          closeModals();
+        }
+      } else {
+        // CREATE new client - Generate ID from database
+        const nextId = await generateNextClientId();
+        
+        const { error } = await supabase
+          .from('clients')
+          .insert([{ ...clientData, id: nextId }]);
+        
+        if (error) {
+          console.error('Insert error:', error);
+          
+          // If duplicate key error, try again with a new ID
+          if (error.code === '23505') {
+            console.log('Duplicate ID detected, retrying...');
+            const retryId = await generateNextClientId();
+            
+            const { error: retryError } = await supabase
+              .from('clients')
+              .insert([{ ...clientData, id: retryId }]);
+            
+            if (retryError) {
+              alert('Error creating client. Please try again.');
+            } else {
+              setClients([...clients, { ...clientData, id: retryId }]);
+              closeModals();
+            }
+          } else {
+            alert('Error creating client. Please try again.');
+          }
+        } else {
+          setClients([...clients, { ...clientData, id: nextId }]);
+          closeModals();
+        }
       }
-    } else {
-      // Custom ID generation CL-001, CL-002, etc.
-      const lastClient = [...clients].sort((a,b) => b.id.localeCompare(a.id))[0];
-      let nextId = "CL-001";
-      if (lastClient && lastClient.id.startsWith("CL-")) {
-        const num = parseInt(lastClient.id.split("-")[1]) + 1;
-        nextId = `CL-${num.toString().padStart(3, '0')}`;
-      }
-      
-      const { error } = await supabase
-        .from('clients')
-        .insert([{ ...clientData, id: nextId }]);
-      
-      if (!error) {
-        setClients([...clients, { ...clientData, id: nextId }]);
-      }
+    } catch (err) {
+      console.error('Error:', err);
+      alert('An error occurred. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
-    closeModals();
   };
 
   const handleDelete = async () => {
@@ -99,7 +181,7 @@ const ClientsPage: React.FC = () => {
     setAddModalOpen(false);
     setDeleteModalOpen(false);
     setCurrentClient(null);
-    setFormData({ name: '', email: '', phone: '', address: '', bankAccount: '' });
+    setFormData({ name: '', email: '', phone: '', address: '', gstin: '', fssaino: '' });
   };
 
   const openEdit = (c: Client) => {
@@ -108,8 +190,9 @@ const ClientsPage: React.FC = () => {
       name: c.name, 
       email: c.email || '', 
       phone: c.phone, 
-      address: c.address, 
-      bankAccount: c.bankAccount || ''
+      address: c.address,
+      gstin: c.gstin || '',
+      fssaino: c.fssaino || ''
     });
     setAddModalOpen(true);
   };
@@ -182,10 +265,20 @@ const ClientsPage: React.FC = () => {
                 <MapPin size={16} className="text-brand shrink-0 mt-1" />
                 <span className="line-clamp-2 leading-relaxed">{client.address}</span>
               </div>
-              {client.bankAccount && (
+              
+              {/* Display GSTIN if available */}
+              {client.gstin && (
                 <div className="flex items-center gap-3 text-sm text-slate-500 pt-3 border-t border-slate-100">
+                  <FileText size={16} className="text-slate-400 shrink-0" />
+                  <span className="text-xs font-bold text-slate-400 uppercase">GSTIN: {client.gstin}</span>
+                </div>
+              )}
+              
+              {/* Display FSSAI No if available */}
+              {client.fssaino && (
+                <div className="flex items-center gap-3 text-sm text-slate-500">
                   <CreditCard size={16} className="text-slate-400 shrink-0" />
-                  <span className="text-xs font-bold text-slate-400 uppercase">A/C: {client.bankAccount}</span>
+                  <span className="text-xs font-bold text-slate-400 uppercase">FSSAI: {client.fssaino}</span>
                 </div>
               )}
             </div>
@@ -199,7 +292,7 @@ const ClientsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Add/Edit Modal - Requirement: Only name, email, phone, address, bankAccount */}
+      {/* Add/Edit Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -208,6 +301,7 @@ const ClientsPage: React.FC = () => {
               <button onClick={closeModals} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
             </div>
             <form onSubmit={handleAddOrUpdate} className="p-8 grid md:grid-cols-2 gap-6">
+              {/* Legal Name */}
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Legal Name</label>
                 <input 
@@ -218,6 +312,8 @@ const ClientsPage: React.FC = () => {
                   placeholder="Enter Partner Name"
                 />
               </div>
+
+              {/* Official Email */}
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Official Email</label>
                 <input 
@@ -228,6 +324,8 @@ const ClientsPage: React.FC = () => {
                   placeholder="partner@example.com"
                 />
               </div>
+
+              {/* Phone */}
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Phone (Primary)</label>
                 <input 
@@ -238,16 +336,32 @@ const ClientsPage: React.FC = () => {
                   placeholder="+91 XXXXX XXXXX"
                 />
               </div>
+
+              {/* GSTIN */}
               <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Banking Account #</label>
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">GSTIN</label>
                 <input 
                   type="text"
-                  value={formData.bankAccount}
-                  onChange={(e) => setFormData({...formData, bankAccount: e.target.value})}
+                  value={formData.gstin}
+                  onChange={(e) => setFormData({...formData, gstin: e.target.value})}
                   className="w-full px-4 py-3 bg-slate-50 input-border rounded-xl font-bold"
-                  placeholder="Account Number"
+                  placeholder="GST Identification Number"
                 />
               </div>
+
+              {/* FSSAI No */}
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">FSSAI No</label>
+                <input 
+                  type="text"
+                  value={formData.fssaino}
+                  onChange={(e) => setFormData({...formData, fssaino: e.target.value})}
+                  className="w-full px-4 py-3 bg-slate-50 input-border rounded-xl font-bold"
+                  placeholder="Food Safety and Standards Authority License Number"
+                />
+              </div>
+
+              {/* Business Address */}
               <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Business Address</label>
                 <textarea 
@@ -258,10 +372,30 @@ const ClientsPage: React.FC = () => {
                   placeholder="Complete Business Address"
                 />
               </div>
+
+              {/* Buttons */}
               <div className="pt-4 flex gap-4 md:col-span-2">
-                <button type="button" onClick={closeModals} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black hover:bg-slate-200 transition-all uppercase tracking-wider">Cancel</button>
-                <button type="submit" className="flex-1 py-4 bg-brand text-white rounded-2xl font-black shadow-xl shadow-brand/20 hover:bg-brand-dark transition-all uppercase tracking-wider">
-                  {currentClient ? 'Apply Changes' : 'Enroll Partner'}
+                <button 
+                  type="button" 
+                  onClick={closeModals} 
+                  disabled={isSaving}
+                  className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black hover:bg-slate-200 transition-all uppercase tracking-wider disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSaving}
+                  className="flex-1 py-4 bg-brand text-white rounded-2xl font-black shadow-xl shadow-brand/20 hover:bg-brand-dark transition-all uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      {currentClient ? 'Updating...' : 'Creating...'}
+                    </>
+                  ) : (
+                    currentClient ? 'Apply Changes' : 'Enroll Partner'
+                  )}
                 </button>
               </div>
             </form>
@@ -274,7 +408,7 @@ const ClientsPage: React.FC = () => {
         onClose={closeModals}
         onConfirm={handleDelete}
         title="Remove Partner"
-        message={`Confirm deletion of "${currentClient?.name}". historical billing data will be preserved.`}
+        message={`Confirm deletion of "${currentClient?.name}". Historical billing data will be preserved.`}
       />
     </div>
   );

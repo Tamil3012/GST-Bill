@@ -89,11 +89,10 @@ const DashboardOverview: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-        {/* Main Chart */}
+      {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
-            <span className="w-2 h-2 bg-indigo-600 rounded-full"></span>
+            <span className="w-2 h-2 bg-brand rounded-full"></span>
             Revenue Analytics
           </h3>
           <div className="h-[300px] sm:h-[400px]">
@@ -117,7 +116,6 @@ const DashboardOverview: React.FC = () => {
           </div>
         </div>
 
-        {/* Recent Bills Sidebar */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-black text-slate-900">Recent Activity</h3>
@@ -147,7 +145,7 @@ const DashboardOverview: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

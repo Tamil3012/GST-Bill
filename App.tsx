@@ -19,6 +19,8 @@ import {
   ChevronDown,
   Clock
 } from 'lucide-react';
+import logo from '@/assets/images/logo.webp';
+import logo2 from '@/assets/images/logo2.webp';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -37,7 +39,7 @@ const CHECK_INTERVAL = 10000; // Check every 10 seconds
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => localStorage.getItem('isLoggedIn') === 'true');
-  const [user, setUser] = useState<{name: string} | null>(isLoggedIn ? { name: 'Tamil' } : null);
+  const [user, setUser] = useState<{name: string} | null>(isLoggedIn ? { name: 'Namma Tea World' } : null);
 
   const handleLogout = useCallback(() => {
     setIsLoggedIn(false);
@@ -50,7 +52,7 @@ const App: React.FC = () => {
     if (success) {
       const now = Date.now().toString();
       setIsLoggedIn(true);
-      setUser({ name: 'Tamil' });
+      setUser({ name: 'Namma Tea World' });
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('lastActivity', now);
     }
@@ -160,12 +162,12 @@ const DashboardLayout: React.FC<{ user: any, onLogout: () => void }> = ({ user, 
           ${isCollapsed && !isMobileOpen ? 'lg:w-20' : 'lg:w-64'}`}
       >
         <div className="p-4 h-16 flex items-center justify-between border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="min-w-[32px] w-8 h-8 bg-brand rounded flex items-center justify-center text-white shrink-0">
-              <Coffee size={20} />
+          <div className="flex items-center gap-3 ">
+            <div className={`min-w-[32px] w-8 h-8 rounded flex items-center justify-center text-white shrink-0 ${isCollapsed && !isMobileOpen ? 'block' : 'hidden'}`}>
+              <img src={logo2} alt="" />
             </div>
-            <span className={`text-lg font-black text-brand transition-opacity duration-300 ${isCollapsed && !isMobileOpen ? 'opacity-0' : 'opacity-100'}`}>
-              Namma Tea
+            <span className={`text-lg font-black text-brand transition-opacity duration-300 ${isCollapsed && !isMobileOpen ? 'hidden' : 'block'}`}>
+              <img className='w-[160px]' src={logo} alt="" />
             </span>
           </div>
           <button onClick={() => setIsCollapsed(!isCollapsed)} className="hidden lg:flex text-slate-400 hover:text-brand">
@@ -181,14 +183,14 @@ const DashboardLayout: React.FC<{ user: any, onLogout: () => void }> = ({ user, 
                 key={item.path}
                 to={item.path}
                 onClick={() => setIsMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all
+                className={`flex items-center gap-3 px-3 py-2.5 w-fit rounded-xl transition-all
                   ${isActive 
                     ? 'bg-brand text-white font-semibold shadow-lg shadow-brand/10' 
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                   }`}
               >
                 <item.icon size={20} className="shrink-0" />
-                <span className={`whitespace-nowrap transition-opacity duration-300 ${isCollapsed && !isMobileOpen ? 'opacity-0' : 'opacity-100'}`}>
+                <span className={`whitespace-nowrap transition-opacity duration-300 ${isCollapsed && !isMobileOpen ? 'hidden ' : 'block'}`}>
                   {item.name}
                 </span>
               </Link>
@@ -223,7 +225,7 @@ const DashboardLayout: React.FC<{ user: any, onLogout: () => void }> = ({ user, 
                 </div>
                 <div className="hidden md:block text-left mr-1">
                   <p className="text-[10px] font-bold text-slate-900 leading-tight">{user?.name}</p>
-                  <p className="text-[8px] text-slate-400 font-black uppercase tracking-tighter">Verified Admin</p>
+                  <p className="text-[8px] text-slate-400 font-black uppercase tracking-wider">Verified Admin</p>
                 </div>
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
               </button>

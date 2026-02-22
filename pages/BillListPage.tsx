@@ -85,7 +85,7 @@ const BillListPage: React.FC = () => {
         </div>
         <button 
           onClick={() => navigate('/dashboard/generate-bill')}
-          className="w-full md:w-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+          className="w-full md:w-auto px-5 py-2.5 bg-brand text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-brand/70 transition-all flex items-center justify-center gap-2"
         >
           <PlusCircle size={20} /> Create New Bill
         </button>

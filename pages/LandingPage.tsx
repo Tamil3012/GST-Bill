@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+// import logo from '../assets/image/logo.webp';
+import logo from '@/assets/images/logo.webp';
 import { 
   Menu as MenuIcon, 
   X, 
@@ -76,6 +78,8 @@ const LandingPage: React.FC = () => {
         />
       )}
 
+      
+
       {/* Sidebar Menu Drawer */}
       <div className={`fixed top-0 right-0 bottom-0 w-80 bg-white z-[70] transform transition-transform duration-500 ease-in-out shadow-2xl flex flex-col ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="p-8 flex justify-between items-center border-b border-slate-100">
@@ -117,10 +121,7 @@ const LandingPage: React.FC = () => {
       <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-8'}`}>
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand rounded-xl flex items-center justify-center text-white shadow-lg">
-              <Coffee size={24} />
-            </div>
-            <span className="text-2xl font-black tracking-tighter uppercase text-brand">Coffee</span>
+            <img className='w-[200px]' src={logo} alt="logo" />
           </div>
 
           {/* Desktop Navigation Menu List */}
@@ -139,9 +140,9 @@ const LandingPage: React.FC = () => {
 
           <div className="flex items-center gap-6">
             <div className="hidden lg:flex items-center gap-4">
-              <span className="text-sm font-black uppercase tracking-widest text-slate-400">Cart 0</span>
               <Link 
                 to="/login" 
+                target='blank'
                 className="w-11 h-11 bg-brand text-white rounded-full flex items-center justify-center shadow-lg shadow-brand/20 hover:scale-110 active:scale-95 transition-all"
                 title="Dashboard Login"
               >
@@ -161,13 +162,13 @@ const LandingPage: React.FC = () => {
       </nav>
 
       {/* Hero Section */}
-      <header id="home" className="relative pt-48 pb-32 overflow-hidden px-6">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
-          <div className="relative z-10 text-center lg:text-left">
-            <h1 className="text-6xl lg:text-8xl font-black leading-[0.9] tracking-tighter mb-10 text-brand">
-              Good Coffee Will <br/> Always Find The <br/> Audience
+      <header id="home" className=" pt-48 pb-32 overflow-hidden px-6">
+        <div className="flex flex-wrap max-w-7xl mx-auto items-center">
+          <div className="w-full lg:w-6/12 z-10 text-center lg:text-left">
+            <h1 className="text-[46px] md:text-5xl lg:text-6xl font-black leading-[120%] tracking-wide mb-10 text-brand">
+              Where India's Love <br className='hidden md:block'/> for Tea Meetsa <br className='hidden md:block'/> Profitable Franchise
             </h1>
-            <p className="text-lg font-bold text-slate-400 mb-12 max-w-sm mx-auto lg:mx-0">
+            <p className="text-lg font-semibold text-slate-400 mb-6  mx-auto lg:mx-0">
               We provide a variety of unique and Best Coffees
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -176,7 +177,7 @@ const LandingPage: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="relative">
+          <div className="w-full lg:w-6/12   mt-[30px] md:mt-0">
              <div className="relative flex justify-center">
                 <img 
                   src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" 
@@ -189,7 +190,7 @@ const LandingPage: React.FC = () => {
                   className="absolute -bottom-10 -right-5 w-52 h-auto rounded-[2.5rem] shadow-xl transform -rotate-12 z-20 border-8 border-white"
                 />
              </div>
-             <div className="absolute top-0 right-0 w-64 h-64 bg-brand/5 rounded-full blur-3xl -z-10 animate-pulse"></div>
+             {/* <div className="absolute top-0 right-0 w-64 h-64 bg-brand/5 rounded-full blur-3xl -z-10 animate-pulse"></div> */}
           </div>
         </div>
       </header>
