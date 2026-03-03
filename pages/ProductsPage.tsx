@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
@@ -25,8 +24,8 @@ const ProductsPage: React.FC = () => {
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Form state
-  const [formData, setFormData] = useState({ name: '', price: '' });
+  // Form state - Added hsn_code field
+  const [formData, setFormData] = useState({ name: '', price: '', hsn_code: '' });
 
   const fetchProducts = async () => {
     setIsLoading(true);
@@ -48,6 +47,7 @@ const ProductsPage: React.FC = () => {
     const productData = { 
       name: formData.name, 
       price: Number(formData.price),
+      hsn_code: formData.hsn_code,
       dateAdded: new Date().toISOString()
     };
 
@@ -91,16 +91,19 @@ const ProductsPage: React.FC = () => {
     setAddModalOpen(false);
     setDeleteModalOpen(false);
     setCurrentProduct(null);
-    setFormData({ name: '', price: '' });
+    setFormData({ name: '', price: '', hsn_code: '' });
   };
 
   const openEdit = (p: Product) => {
     setCurrentProduct(p);
-    setFormData({ name: p.name, price: String(p.price) });
+    setFormData({ name: p.name, price: String(p.price), hsn_code: p.hsn_code || '' });
     setAddModalOpen(true);
   };
 
-  const filteredProducts = products.filter(p => (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredProducts = products.filter(p => 
+    (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.hsn_code || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -125,7 +128,7 @@ const ProductsPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text" 
-              placeholder="Search products by name..."
+              placeholder="Search products by name or HSN code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
@@ -138,6 +141,7 @@ const ProductsPage: React.FC = () => {
             <thead>
               <tr className="bg-slate-50/50 text-slate-500 text-xs font-bold uppercase tracking-wider">
                 <th className="px-6 py-4">Product Name</th>
+                <th className="px-6 py-4">HSN Code</th>
                 <th className="px-6 py-4">Unit Price</th>
                 <th className="px-6 py-4">Date Added</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -146,12 +150,17 @@ const ProductsPage: React.FC = () => {
             <tbody className="divide-y divide-slate-50">
               {isLoading ? (
                 <tr>
-                   <td colSpan={4} className="px-6 py-20 text-center text-slate-400 italic">Syncing with database...</td>
+                   <td colSpan={5} className="px-6 py-20 text-center text-slate-400 italic">Syncing with database...</td>
                 </tr>
               ) : filteredProducts.length > 0 ? filteredProducts.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4">
                     <span className="font-semibold text-slate-900">{p.name}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded-md text-sm">
+                      {p.hsn_code || '-'}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-emerald-600 font-bold">₹{p.price.toLocaleString()}</span>
@@ -178,7 +187,7 @@ const ProductsPage: React.FC = () => {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={4} className="px-6 py-20 text-center">
+                  <td colSpan={5} className="px-6 py-20 text-center">
                     <div className="flex flex-col items-center justify-center opacity-30">
                       <Package size={48} className="mb-4" />
                       <p className="font-bold text-lg">No products found</p>
@@ -209,6 +218,16 @@ const ProductsPage: React.FC = () => {
                   placeholder="e.g., Premium Tea Powder"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-xl outline-none transition-all font-medium"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">HSN Code</label>
+                <input 
+                  type="text"
+                  placeholder="e.g., 0902"
+                  value={formData.hsn_code}
+                  onChange={(e) => setFormData({...formData, hsn_code: e.target.value})}
                   className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-xl outline-none transition-all font-medium"
                 />
               </div>

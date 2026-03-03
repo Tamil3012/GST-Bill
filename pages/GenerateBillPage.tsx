@@ -165,6 +165,22 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
     }));
   };
 
+  // ===== ADD PRODUCT TO BILL =====
+  const handleAddProduct = (productId: string) => {
+    const p = products.find(prod => prod.id === productId);
+    if (p) {
+      const newBillItem: BillItem = {
+        productId: p.id,
+        name: p.name,
+        price: p.price,
+        quantity: 1,
+        amount: p.price,
+        hsn_code: p.hsn_code || '' // Include hsn_code from product
+      };
+      setBillItems([...billItems, newBillItem]);
+    }
+  };
+
   const handleSaveBill = async () => {
     if (!selectedClient || billItems.length === 0) return alert("Select client and items.");
     setIsLoading(true);
@@ -426,7 +442,7 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
                   <tr key={idx} className="border-b border-black">
                     <td className="border-r-2 border-black pb-4 text-center text-[14px]">{idx + 1}</td>
                     <td className="border-r-2 border-black pb-4 px-4 font-medium text-[14px]">{item.name}</td>
-                    <td className="border-r-2 border-black pb-4 text-center text-[14px]">090230</td>
+                    <td className="border-r-2 border-black pb-4 text-center text-[14px]">{item.hsn_code || '-'}</td>
                     <td className="border-r-2 border-black pb-4 text-center text-[14px]">{item.quantity}</td>
                     <td className="border-r-2 border-black pb-4 text-center text-[14px]">{item.price.toFixed(2)}</td>
                     <td className="pb-4 text-right pr-4 font-medium text-[14px]">{item.amount.toFixed(2)}</td>
@@ -634,16 +650,19 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
               <div className="relative group select-container">
                 <select 
                   onChange={(e) => {
-                    const p = products.find(prod => prod.id === e.target.value);
-                    if (p) {
-                      setBillItems([...billItems, { productId: p.id, name: p.name, price: p.price, quantity: 1, amount: p.price }]);
+                    if (e.target.value) {
+                      handleAddProduct(e.target.value);
                       e.target.value = '';
                     }
                   }}
                   className="w-full px-4 py-3.5 input-border rounded-xl font-bold appearance-none relative z-10"
                 >
                   <option value="">Choose tea variant to bill...</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.name} - ₹{p.price}</option>)}
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} - ₹{p.price} {p.hsn_code ? `(HSN: ${p.hsn_code})` : ''}
+                    </option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-transform duration-300 group-focus-within:rotate-180 z-0" size={20} />
               </div>
@@ -653,6 +672,7 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
                   <thead className="bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-widest">
                     <tr>
                       <th className="px-4 py-4">Description</th>
+                      <th className="px-4 py-4 text-center">HSN</th>
                       <th className="px-4 py-4 text-center">Qty</th>
                       <th className="px-4 py-4 text-right">Rate</th>
                       <th className="px-4 py-4 text-right">Total</th>
@@ -663,6 +683,11 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
                     {billItems.map((item, idx) => (
                       <tr key={idx} className="border-t border-slate-100">
                         <td className="px-4 py-4 font-bold text-black">{item.name}</td>
+                        <td className="px-4 py-4 text-center">
+                          <span className="text-xs bg-slate-100 px-2 py-1 rounded font-medium text-slate-600">
+                            {item.hsn_code || '-'}
+                          </span>
+                        </td>
                         <td className="px-4 py-4 text-center">
                           <div className="flex items-center justify-center gap-3">
                             <button onClick={() => handleQtyChange(idx, -1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-brand border border-slate-200">
@@ -736,22 +761,6 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
                 />
               </div>
             </div>
-            
-            {/* Active Tax Display */}
-            {/* <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-              <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Active Tax:</p>
-              {igstValue > 0 ? (
-                <p className="text-sm font-black text-brand">IGST @ {igstValue}%</p>
-              ) : (cgstValue > 0 || sgstValue > 0) ? (
-                <p className="text-sm font-black text-brand">
-                  {cgstValue > 0 && `CGST @ ${cgstValue}%`}
-                  {cgstValue > 0 && sgstValue > 0 && ' + '}
-                  {sgstValue > 0 && `SGST @ ${sgstValue}%`}
-                </p>
-              ) : (
-                <p className="text-sm font-medium text-slate-400">No tax applied</p>
-              )}
-            </div> */}
           </section>
 
           {/* Bill Totals */}

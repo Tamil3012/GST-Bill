@@ -4,6 +4,7 @@ export interface Product {
   name: string;
   price: number;
   dateAdded: string;
+  hsn_code: string;
 }
 
 export interface Client {
@@ -38,6 +39,7 @@ export interface BankDetails {
 export interface BillItem {
   productId: string;
   name: string;
+  hsn_code: string;
   price: number;
   quantity: number;
   amount: number;
