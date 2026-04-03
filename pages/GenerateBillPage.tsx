@@ -775,12 +775,26 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
                             <input
                               type="text"
                               inputMode="numeric"
-                              value={item.quantity}
+                              value={item.quantity === 0 ? '' : item.quantity}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => {
-                                const val = parseInt(e.target.value);
-                                if (e.target.value === '' || isNaN(val)) return;
+                                const raw = e.target.value;
+                                if (raw === '') {
+                                  setBillItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: 0, amount: 0 } : it));
+                                  return;
+                                }
+                                const val = parseInt(raw);
+                                if (isNaN(val)) return;
                                 const qty = Math.max(1, val);
                                 setBillItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: qty, amount: qty * it.price } : it));
+                              }}
+                              onBlur={() => {
+                                setBillItems(prev => prev.map((it, i) => {
+                                  if (i === idx && it.quantity === 0) {
+                                    return { ...it, quantity: 1, amount: it.price };
+                                  }
+                                  return it;
+                                }));
                               }}
                               className="w-12 text-center font-black text-black border border-slate-200 rounded-lg py-1 outline-none focus:border-brand"
                             />
