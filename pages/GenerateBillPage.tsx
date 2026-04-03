@@ -46,6 +46,12 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
   });
   const [selectedClientId, setSelectedClientId] = useState('');
   const [billItems, setBillItems] = useState<BillItem[]>([]);
+  const [clientSearch, setClientSearch] = useState('');
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+  const clientDropdownRef = useRef<HTMLDivElement>(null);
+  const [productSearch, setProductSearch] = useState('');
+  const [productDropdownOpen, setProductDropdownOpen] = useState(false);
+  const productDropdownRef = useRef<HTMLDivElement>(null);
   
   // Tax rates as strings to handle empty input properly
   // Default: CGST = 2.5, SGST = 2.5, IGST = empty
@@ -55,6 +61,25 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
     igst: '' 
   });
   
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target as Node)) {
+        setClientDropdownOpen(false);
+      }
+    };
+    const handleClickOutsideProduct = (e: MouseEvent) => {
+      if (productDropdownRef.current && !productDropdownRef.current.contains(e.target as Node)) {
+        setProductDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutsideProduct);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutsideProduct);
+    };
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -628,16 +653,48 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
             <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-3 uppercase tracking-wider">
               <User className="text-brand" /> Client Selection
             </h3>
-            <div className="relative group select-container">
-              <select 
-                value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full px-4 py-3.5 input-border rounded-xl font-bold appearance-none relative z-10"
+            <div className="relative" ref={clientDropdownRef}>
+              <div
+                className="w-full px-4 py-3.5 input-border rounded-xl font-bold flex items-center justify-between cursor-pointer"
+                onClick={() => { setClientDropdownOpen(o => !o); setClientSearch(''); }}
               >
-                <option value="">Select partner from directory...</option>
-                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-transform duration-300 group-focus-within:rotate-180 z-0" size={20} />
+                <span className={selectedClientId ? 'text-black' : 'text-slate-400'}>
+                  {selectedClientId ? clients.find(c => c.id === selectedClientId)?.name : 'Select partner from directory...'}
+                </span>
+                <ChevronDown className={`text-slate-400 transition-transform duration-300 ${clientDropdownOpen ? 'rotate-180' : ''}`} size={20} />
+              </div>
+              {clientDropdownOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                  <div className="p-2 border-b border-slate-100">
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Search client..."
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-brand"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <ul className="max-h-52 overflow-y-auto">
+                    {clients
+                      .filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase()))
+                      .map(c => (
+                        <li
+                          key={c.id}
+                          className={`py-[8px] px-[4px] cursor-pointer text-black bg-white hover:bg-slate-50 font-medium ${selectedClientId === c.id ? 'bg-slate-100 font-bold' : ''}`}
+                          onClick={() => { setSelectedClientId(c.id); setClientDropdownOpen(false); setClientSearch(''); }}
+                        >
+                          {c.name}
+                        </li>
+                      ))
+                    }
+                    {clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 && (
+                      <li className="py-[8px] px-[4px] text-slate-400 italic text-sm">No clients found</li>
+                    )}
+                  </ul>
+                </div>
+              )}
             </div>
           </section>
 
@@ -647,24 +704,46 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
               <Package className="text-brand" /> Tea Inventory
             </h3>
             <div className="space-y-4">
-              <div className="relative group select-container">
-                <select 
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleAddProduct(e.target.value);
-                      e.target.value = '';
-                    }
-                  }}
-                  className="w-full px-4 py-3.5 input-border rounded-xl font-bold appearance-none relative z-10"
+              <div className="relative" ref={productDropdownRef}>
+                <div
+                  className="w-full px-4 py-3.5 input-border rounded-xl font-bold flex items-center justify-between cursor-pointer"
+                  onClick={() => { setProductDropdownOpen(o => !o); setProductSearch(''); }}
                 >
-                  <option value="">Choose tea variant to bill...</option>
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} - ₹{p.price} {p.hsn_code ? `(HSN: ${p.hsn_code})` : ''}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-transform duration-300 group-focus-within:rotate-180 z-0" size={20} />
+                  <span className="text-slate-400">Choose tea variant to bill...</span>
+                  <ChevronDown className={`text-slate-400 transition-transform duration-300 ${productDropdownOpen ? 'rotate-180' : ''}`} size={20} />
+                </div>
+                {productDropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                    <div className="p-2 border-b border-slate-100">
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Search tea variant..."
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-brand"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <ul className="max-h-52 overflow-y-auto">
+                      {products
+                        .filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                        .map(p => (
+                          <li
+                            key={p.id}
+                            className="py-[8px] px-[4px] cursor-pointer text-black bg-white hover:bg-slate-50 font-medium"
+                            onClick={() => { handleAddProduct(p.id); setProductDropdownOpen(false); setProductSearch(''); }}
+                          >
+                            {p.name} - ₹{p.price} {p.hsn_code ? `(HSN: ${p.hsn_code})` : ''}
+                          </li>
+                        ))
+                      }
+                      {products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase())).length === 0 && (
+                        <li className="py-[8px] px-[4px] text-slate-400 italic text-sm">No products found</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
               </div>
               
               <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -693,7 +772,18 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
                             <button onClick={() => handleQtyChange(idx, -1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-brand border border-slate-200">
                               <Minus size={14}/>
                             </button>
-                            <span className="w-6 font-black text-black">{item.quantity}</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                if (e.target.value === '' || isNaN(val)) return;
+                                const qty = Math.max(1, val);
+                                setBillItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: qty, amount: qty * it.price } : it));
+                              }}
+                              className="w-12 text-center font-black text-black border border-slate-200 rounded-lg py-1 outline-none focus:border-brand"
+                            />
                             <button onClick={() => handleQtyChange(idx, 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-brand border border-slate-200">
                               <Plus size={14}/>
                             </button>
