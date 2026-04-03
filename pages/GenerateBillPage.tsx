@@ -46,6 +46,7 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
   });
   const [selectedClientId, setSelectedClientId] = useState('');
   const [billItems, setBillItems] = useState<BillItem[]>([]);
+  const [qtyRaw, setQtyRaw] = useState<{ [idx: number]: string }>({});
   const [clientSearch, setClientSearch] = useState('');
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
   const clientDropdownRef = useRef<HTMLDivElement>(null);
@@ -183,7 +184,7 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
   const handleQtyChange = (idx: number, delta: number) => {
     setBillItems(prev => prev.map((item, i) => {
       if (i === idx) {
-        const newQty = Math.max(1, item.quantity + delta);
+        const newQty = Math.max(0.5, parseFloat((item.quantity + delta).toFixed(2)));
         return { ...item, quantity: newQty, amount: newQty * item.price };
       }
       return item;
@@ -774,21 +775,24 @@ const GenerateBillPage: React.FC<GenerateBillPageProps> = ({ mode }) => {
                             </button>
                             <input
                               type="text"
-                              inputMode="numeric"
-                              value={item.quantity === 0 ? '' : item.quantity}
-                              onFocus={(e) => e.target.select()}
+                              inputMode="decimal"
+                              value={qtyRaw[idx] !== undefined ? qtyRaw[idx] : (item.quantity === 0 ? '' : String(item.quantity))}
+                              onFocus={(e) => { setQtyRaw(prev => ({ ...prev, [idx]: String(item.quantity === 0 ? '' : item.quantity) })); e.target.select(); }}
                               onChange={(e) => {
                                 const raw = e.target.value;
-                                if (raw === '') {
+                                if (!/^\d*\.?\d*$/.test(raw)) return;
+                                setQtyRaw(prev => ({ ...prev, [idx]: raw }));
+                                if (raw === '' || raw === '.') {
                                   setBillItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: 0, amount: 0 } : it));
                                   return;
                                 }
-                                const val = parseInt(raw);
+                                const val = parseFloat(raw);
                                 if (isNaN(val)) return;
-                                const qty = Math.max(1, val);
+                                const qty = Math.max(0, val);
                                 setBillItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: qty, amount: qty * it.price } : it));
                               }}
                               onBlur={() => {
+                                setQtyRaw(prev => { const next = { ...prev }; delete next[idx]; return next; });
                                 setBillItems(prev => prev.map((it, i) => {
                                   if (i === idx && it.quantity === 0) {
                                     return { ...it, quantity: 1, amount: it.price };
